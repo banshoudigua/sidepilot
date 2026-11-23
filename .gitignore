@@ -36,3 +36,7 @@ desktop.ini
 .idea/
 .vscode/
 *.swp
+
+# ---- 本机推送工具（git push 不可用时的 API 脚本）----
+_push*.cjs
+_push*.mjs

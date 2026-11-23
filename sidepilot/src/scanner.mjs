@@ -29,12 +29,13 @@ const PATTERNS = [
       return { method, path: m[1] };
     }
   },
-  // 原生 http：if (path === '/api/x' && req.method === 'GET')
+  // 原生 http：if (req.url === '/api/x' && req.method === 'GET')
+  // 变量名最常见的是 req.url，其次是 path / pathname，三种都要认
   {
     name: 'node-http',
-    re: /path(?:name)?\s*===?\s*['"`]([^'"`]+)['"`]/g,
+    re: /(?:req\.url|request\.url|\bpath|\bpathname|\burl)\s*===?\s*['"`]([^'"`]+)['"`]/g,
     pick: (m, line) => {
-      const mm = line.match(/req\.method\s*===?\s*['"](\w+)['"]/i);
+      const mm = line.match(/(?:req\.|request\.)?method\s*===?\s*['"](\w+)['"]/i);
       return { method: mm ? mm[1].toUpperCase() : 'GET', path: m[1] };
     }
   }

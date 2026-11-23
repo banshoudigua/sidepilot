@@ -6,78 +6,17 @@
 
 ---
 
-## 一句话安装
+## 安装
 
-把下面这段完整粘进项目里的 AI Agent（CodeBuddy / Claude Code / Cursor 都行），
-它会自己判断、放代码、初始化、填配置、挂载、验证。
+完整安装指令在仓库根部的 [README.md](../README.md#装进你自己的项目)，那段可以直接整段粘给 AI Agent。
 
-> 前提：**目标项目必须是 Node.js**。SidePilot 零第三方依赖，不需要 `npm install`——
-> 这一点很关键，本机 npm 装包容易卡死，而它压根不用装。
+需要记住三点：
 
-```text
-# 任务：给这个项目装一个 AI 助手（SidePilot）
+- SidePilot **零第三方依赖**，不需要 `npm install`，把目录复制到 `vendor/sidepilot` 即可
+- Node 项目用嵌入模式，入口加两行；PHP / Java / .NET 用独立模式，业务代码零改动
+- 装完必须**真发一句话**验证，只看页面能不能打开不算通过
 
-约束：SidePilot 只支持 Node.js 项目；零第三方依赖，不需要 npm install；
-不要给项目新增任何依赖，也不要改业务代码。
-
-请按顺序做，每步把结果告诉我。卡住就停下来问我，不要自己发明方案。
-
-## 1. 判断能不能装
-读 package.json，确认四件事：是不是 Node 项目、入口文件是哪个、
-监听端口多少、路由怎么注册的（Express / Koa / 原生 http）。
-不是 Node 项目就停下来告诉我，不要硬装。
-
-## 2. 放代码
-把 sidepilot 整个目录复制到项目的 vendor/sidepilot。
-不要放进 node_modules，也不需要 npm install。
-
-## 3. 初始化
-在项目根目录执行：
-  node vendor/sidepilot/cli/index.mjs init --root . --name "项目名"
-它会扫路由，生成 .sidepilot/manifest.json、.sidepilot/config.json。
-把完整输出贴给我。
-
-## 4. 补全接口参数
-打开 .sidepilot/manifest.json，找出 confidence 为 low 的条目，
-回源码确认每个参数：名字、位置（query / body / path）、类型、是否必填，就地补齐。
-参数名必须与源码逐字一致，不许编造；不确定的标成 low 留给我确认。
-
-## 5. 填模型配置
-编辑 .sidepilot/config.json：
-  llm.baseUrl   OpenAI 兼容地址，例如 https://api.deepseek.com/v1
-  llm.apiKey    模型密钥（我会提供，你写进去，不要打印出来）
-  llm.model     模型名
-  api.baseUrl   指向项目启动后的地址，例如 http://127.0.0.1:3000
-另外把 profile 填上：业务是干什么的（domain）、用户最常做什么（topTasks）、
-哪些内容不许碰（restricted）。这三项决定助手说话像不像这个系统的人。
-
-## 6. 挂载
-在入口文件里、所有路由注册之后、listen 之前，加两行：
-  import { createPilot } from './vendor/sidepilot/src/index.mjs';
-  createPilot({ config: './.sidepilot/config.json' }).attach(server);
-
-如果你是 Express / Koa：把 attach(server) 换成 mount(app, '/pilot')。
-
-## 7. 验证（必须真发一句话）
-启动项目，逐项确认并把结果告诉我：
-  a) /pilot 能打开
-  b) 在 /pilot 里真的发一句「这个系统里有什么数据」，能收到回答
-     —— 只看页面能不能打开不算通过，必须看到模型回复
-  c) /pilot/docs 列出接口清单
-  d) /pilot/admin 能打开，能看到概览数字
-如果 b 失败，把报错贴给我，大概率是 apiKey 或 model 名写错。
-
-## 8. 交付说明
-告诉我：改了哪几个文件（应该只有入口那两行）、扫出多少个接口、
-有几个还是 low 置信度、以及怎么卸载。
-
-卸载方式：删掉入口那两行 + 删除 .sidepilot 目录 + 删除 vendor/sidepilot。
-
-## 铁律
-- 不改业务代码，只加入口那两行
-- 不动已有依赖版本，不新增依赖
-- 失败就停下报告，不要反复重试同一个动作
-```
+下面几节是这个框架本身的技术细节：能力域、两种接入方式、安全边界。
 
 ---
 

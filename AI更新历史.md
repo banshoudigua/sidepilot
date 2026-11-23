@@ -372,6 +372,80 @@ GET  /api/admin/logs            工具调用流水
 
 ---
 
+### 上传 GitHub + 修复原生 http 扫描漏识别
+
+**一、仓库上线**
+
+仓库：https://github.com/banshoudigua/sidepilot （public）
+
+为了让别人「复制一段话就能装」，做了三件事：
+
+1. **仓库根 README 顶部放了一整段可直接粘给 AI Agent 的安装指令**（`text` 代码块，GitHub 上有复制按钮）。指令覆盖 8 步：判断项目类型 → 拉代码 → init → 补参数 → 填模型配置 → 挂载 → **真发一句话验证** → 交付说明。每步都写了失败时该停下问、不许编造参数。
+2. **仓库简介（description）**写清它是什么 + 指向 README 里的指令段。
+3. **两份 README 的安装说明统一了**。原来 `sidepilot/README.md` 里还残留 `npm i sidepilot` 和「目标项目必须是 Node.js」的说法，跟独立模式自相矛盾，改成指向根 README、只保留三条要点。
+
+**二、安全：先挡密钥再上传**
+
+- 新增 `.gitignore`：`**/.sidepilot/config.json`（含真实 Key）、`**/.sidepilot/*.db*`（对话记录）、`**/data/*.db*`（示例库）、`项目规则.md`（本机笔记含 Key）、`.workbuddy/`。
+- 新增两份 `config.example.json`（demo-shop / demo-static），Key 位置写「在这里填你的 Key」，别人复制过去填自己的。
+- 提交前做了两道检查：`git diff --cached --name-only` 过滤敏感路径、`git grep -E "sk-[A-Za-z0-9]{20,}" --cached` 扫内容。两道都过才提交。
+- 推上去之后又用 API 把线上文件拉回来扫了一遍，确认 0 命中。
+
+**三、修扫描器：`req.url === '/api/x'` 认不出来**
+
+上传后按 README 的指令在一个全新目录里走了一遍完整安装（原生 http 项目，两个接口），init 扫出 **0 个接口**。
+
+根因：`node-http` 那条正则只认变量名叫 `path` / `pathname`：
+```js
+/path(?:name)?\s*===?\s*['"`]([^'"`]+)['"`]/g
+```
+而最常见的写法是 `if (req.url === '/api/items' && req.method === 'GET')`，`req.url` 完全匹配不上。
+
+改成三种都认，method 检测也放宽到 `method` / `req.method` / `request.method`：
+```js
+/(?:req\.url|request\.url|\bpath|\bpathname|\burl)\s*===?\s*['"`]([^'"`]+)['"`]/g
+```
+
+**端到端验证（这才是「能用」的证据）**
+
+修完在一个干净目录 `_tmp_install_test` 里严格照 README 走了 8 步：
+
+| 步骤 | 结果 |
+|---|---|
+| 建一个原生 http 项目（2 个接口） | ✓ |
+| `cp -r sidepilot ./vendor/sidepilot` | ✓ |
+| `init --root . --name "测试项目"` | 扫出 2 个接口，方法/路径/风险全对 |
+| 填 config（llm + api.baseUrl） | ✓ |
+| 入口加两行挂载 | ✓ |
+| 四个入口 | `/pilot` 200、`/pilot/docs` 200、`/pilot/admin` 200、`bootstrap` 200 |
+| **真发一句话**「这个系统里有什么数据？」 | 模型调 `items_list` → 返回 1 条 → 输出表格「id/名称/价格」 |
+
+验证完停服务、**删掉整个测试目录**（里面有带 Key 的 config.json）。
+
+**四、本机推不了 git push，改用 API 推送**
+
+现象：`git push` 报 `Empty reply from server`；直连 `github.com:443` 超时；本机几个代理端口（51841 / 52494 / 7890 / 10809）对 github.com 全部不通。
+
+但 `api.github.com` **直连 200**，所以 `gh` 命令一直能用。
+
+解决办法：绕开 git transport，用 GitHub Git Data API 手工推——建 blob → 建 tree（带 `base_tree`）→ 建 commit → 移动 ref。空仓库不能直接建 blob（会返回 409 Git Repository is empty），要先靠 contents API 放一个种子文件。
+
+**文件**
+
+- `.gitignore`（新增）
+- `README.md`（新增，仓库根；含 Agent 安装指令）
+- `sidepilot/examples/demo-shop/.sidepilot/config.example.json`（新增）
+- `sidepilot/examples/demo-static/.sidepilot/config.example.json`（新增）
+- `sidepilot/src/scanner.mjs` — `node-http` 正则扩展，认 `req.url` / `request.url` / `url` / `path` / `pathname`
+- `sidepilot/README.md` — 「一句话安装」整段替换为指向根 README 的短指引，消除与独立模式的矛盾
+
+**遗留**
+
+- `raw.githubusercontent.com` 在本机不通，Agent 无法用 raw 链接取指令，只能读仓库页面或 clone（换机器通常正常）。
+- 管理端仍无登录验证，公网部署需自行加 Basic Auth 或 IP 白名单。
+
+---
+
 ## 模板（后续每次变更照此格式追加）
 
 ### 新增 / 修改 / 修复：一句话说明
