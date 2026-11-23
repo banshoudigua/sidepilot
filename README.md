@@ -4,6 +4,8 @@
 
 零第三方依赖，只用 Node 内置模块（`node:http` / `node:sqlite` / 原生 `fetch`）。业务代码不动，入口加两行。
 
+**▶ 在线看效果：[banshoudigua.github.io/sidepilot](https://banshoudigua.github.io/sidepilot/)**（介绍页，不用装任何东西）
+
 ![零依赖](https://img.shields.io/badge/%E4%BE%9D%E8%B5%96-0-2f6f4f)
 ![Node](https://img.shields.io/badge/Node-20%2B-1a1917)
 ![License](https://img.shields.io/badge/license-MIT-c2410c)

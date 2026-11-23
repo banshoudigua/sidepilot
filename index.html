@@ -633,6 +633,32 @@ h2 {
 }
 .entry:hover .go { color: var(--accent); transform: translate(2px,-2px); }
 
+/* 线上访问时，本地示例入口会失效，用这条提示 + 灰化说明清楚 */
+.entry-note {
+  border: 1px dashed var(--line-strong);
+  background: var(--paper-lift);
+  border-radius: 3px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.72;
+}
+.entry-note b { color: var(--ink-2); font-weight: 600; }
+.entry-note a {
+  color: var(--accent-ink);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent);
+}
+.entry-note a:hover { background: var(--accent-soft); }
+
+.entry.offline {
+  opacity: .52;
+  pointer-events: none;
+  filter: grayscale(.35);
+}
+.entry.offline .go { display: none; }
+
 /* ---------- 数据条 ---------- */
 .stats {
   display: grid; grid-template-columns: repeat(4, 1fr);
@@ -724,7 +750,9 @@ html.anim .reveal.in { opacity: 1; transform: none; }
       <a href="#guard">安全</a>
       <a href="#entry">入口</a>
     </nav>
-    <a class="nav-cta" href="http://localhost:8080" target="_blank" rel="noopener">打开示例 ↗</a>
+    <a class="nav-cta" href="http://localhost:8080" target="_blank" rel="noopener"
+       data-local-href="http://localhost:8080" data-local-text="打开示例 ↗"
+       data-web-href="https://github.com/banshoudigua/sidepilot" data-web-text="看源码 ↗">打开示例 ↗</a>
   </div>
 </header>
 
@@ -748,7 +776,9 @@ html.anim .reveal.in { opacity: 1; transform: none; }
 
         <div class="cta-row">
           <a class="btn btn-solid" href="#how">看看怎么接 <span class="arw">→</span></a>
-          <a class="btn btn-line" href="http://localhost:8080/pilot/admin" target="_blank" rel="noopener">打开管理端</a>
+          <a class="btn btn-line" href="http://localhost:8080/pilot/admin" target="_blank" rel="noopener"
+             data-local-href="http://localhost:8080/pilot/admin" data-local-text="打开管理端"
+             data-web-href="#how" data-web-text="看安装步骤">打开管理端</a>
         </div>
 
         <div class="hero-meta">
@@ -975,20 +1005,26 @@ location /pilot/ {
       <p>终端用户聊天，运维查接口，管理员改配置。不用再另外搭一套后台。</p>
     </div>
 
+    <!-- 线上访问时这三个链接指向本机示例站，访问不了，所以先提示再灰化 -->
+    <div class="entry-note" id="entryNote" hidden>
+      下面三个是<b>本地示例站</b>的入口。这个页面只是介绍，示例站要你自己跑起来才有——
+      命令在 <a href="https://github.com/banshoudigua/sidepilot#本地跑两个示例" target="_blank" rel="noopener">README 的「本地跑两个示例」</a>。
+    </div>
+
     <div class="entries">
-      <a class="entry reveal" href="http://localhost:8080/pilot" target="_blank" rel="noopener">
+      <a class="entry reveal" href="http://localhost:8080/pilot" target="_blank" rel="noopener" data-local>
         <span class="go">↗</span>
         <div class="path">/pilot</div>
         <h3>助手</h3>
         <p>给业务人员用。问数据、加记录、改文案。刷新接着上次聊，历史能翻能切。</p>
       </a>
-      <a class="entry reveal" href="http://localhost:8080/pilot/docs" target="_blank" rel="noopener">
+      <a class="entry reveal" href="http://localhost:8080/pilot/docs" target="_blank" rel="noopener" data-local>
         <span class="go">↗</span>
         <div class="path">/pilot/docs</div>
         <h3>接口文档</h3>
         <p>按分组列出接口、参数、风险等级，带搜索和修改历史，改错了在这里回滚。</p>
       </a>
-      <a class="entry reveal" href="http://localhost:8080/pilot/admin" target="_blank" rel="noopener">
+      <a class="entry reveal" href="http://localhost:8080/pilot/admin" target="_blank" rel="noopener" data-local>
         <span class="go">↗</span>
         <div class="path">/pilot/admin</div>
         <h3>管理端</h3>
@@ -1167,6 +1203,36 @@ location /pilot/ {
     });
     if (passes >= 4) clearInterval(backup);
   }, 1200);
+})();
+
+/* ============================================================
+   线上 / 本地两套链接
+   这个页面既会在本机预览（localhost，示例站可点），也会挂在 GitHub Pages
+   （访客本机没有 8080 服务，链接全是死链）。所以按 hostname 切一次。
+   ============================================================ */
+(function () {
+  var host = location.hostname;
+  var isLocal = host === 'localhost' || host === '127.0.0.1' || host === '';
+
+  // 本机预览：保持原样，示例站点了就能打开
+  if (isLocal) return;
+
+  // 线上：把带 data-web-href 的按钮换成线上可用的目标
+  Array.prototype.forEach.call(document.querySelectorAll('[data-web-href]'), function (a) {
+    var web = a.getAttribute('data-web-href');
+    var text = a.getAttribute('data-web-text');
+    if (web) a.setAttribute('href', web);
+    if (text) a.textContent = text;
+  });
+
+  // 线上：三个示例入口灰掉，避免点开是"无法访问此网站"
+  Array.prototype.forEach.call(document.querySelectorAll('[data-local]'), function (el) {
+    el.classList.add('offline');
+    el.removeAttribute('target');
+  });
+
+  var note = document.getElementById('entryNote');
+  if (note) note.hidden = false;
 })();
 </script>
 
