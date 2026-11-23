@@ -8,6 +8,111 @@
 ![Node](https://img.shields.io/badge/Node-20%2B-1a1917)
 ![License](https://img.shields.io/badge/license-MIT-c2410c)
 
+> **装之前先想清楚一件事：它自己不会思考，得给它一个大模型。**
+> 你需要准备三样东西——一个 OpenAI 兼容的接口地址、一个 API Key、一个**支持 tool calling 的模型名**。
+> 没这三样，装上了也只是个空壳，一句话都答不出来。下面第一节专门讲这件事。
+
+---
+
+## 先准备一个大模型
+
+SidePilot 不绑定任何厂商，它只是按 OpenAI 的协议发 `POST {baseUrl}/chat/completions`。
+所以只要你的服务兼容这个协议，换个地址和模型名就能用。
+
+### 需要三样东西
+
+| 你要提供的 | 填到哪 | 例子 |
+|---|---|---|
+| 接口地址 `baseUrl` | `config.json` → `llm.baseUrl` | `https://api.deepseek.com/v1` |
+| 密钥 `apiKey` | `config.json` → `llm.apiKey` | `sk-xxxxxxxx` |
+| 模型名 `model` | `config.json` → `llm.model` | `deepseek-v4-flash` |
+
+### 硬门槛：模型必须支持 tool calling
+
+这不是建议，是**必要条件**。
+
+SidePilot 的全部能力——查数据、调接口、改文件——都靠模型的 function calling 实现。
+如果模型不支持，助手只会跟你闲聊，一个接口都调不动，界面上看不到任何工具调用记录。
+
+选模型时优先挑带 **tools / function calling** 标记的。各家旗舰和主流档一般都支持，免费小模型经常不支持。
+
+### 常用服务对照
+
+| 服务商 | baseUrl | 模型名举例 |
+|---|---|---|
+| **DeepSeek**（最省事） | `https://api.deepseek.com/v1` | `deepseek-v4-flash`、`deepseek-v4-pro` |
+| 阿里通义（百炼） | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-max`、`qwen-plus` |
+| 月之暗面 Kimi | `https://api.moonshot.cn/v1` | `kimi-k2`、`moonshot-v1-8k` |
+| 智谱 GLM | `https://open.bigmodel.cn/api/paas/v4` | `glm-4-plus`、`glm-4-flash` |
+| 硅基流动 | `https://api.siliconflow.cn/v1` | 见控制台模型广场 |
+| OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini` |
+| 本地 Ollama | `http://127.0.0.1:11434/v1` | `qwen3:8b` 等本地模型 |
+
+> **模型名变动很快**（比如 DeepSeek 的 `deepseek-chat` 已在 2026-07 弃用，现在是 `deepseek-v4-flash`）。
+> 表格里的模型名只是举例，**以你控制台的模型列表为准**。写错会返回 `model_not_found` 或 404。
+
+### 填进配置文件
+
+`.sidepilot/config.json` 里这一段：
+
+```json
+{
+  "llm": {
+    "baseUrl": "https://api.deepseek.com/v1",
+    "apiKey": "sk-你的真实key",
+    "model": "deepseek-v4-flash",
+    "temperature": 0.3,
+    "pricing": { "inputPerMillion": 0.15, "outputPerMillion": 0.6 }
+  },
+  "api": {
+    "baseUrl": "http://127.0.0.1:3000"
+  }
+}
+```
+
+- `llm` 是模型，`api.baseUrl` 是**你自己的业务系统**地址（助手要回头调它）
+- `pricing` 是每百万 token 的单价，填了管理端才能算钱；不填就只统计 token 不报金额
+
+### 填完先自检，别等装完再排查
+
+不装项目也能验，一条命令就够：
+
+```bash
+curl https://api.deepseek.com/v1/chat/completions \
+  -H "Authorization: Bearer sk-你的key" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"deepseek-v4-flash","messages":[{"role":"user","content":"只回复两个字：收到"}],"stream":false}'
+```
+
+返回里能看到 `"content": "收到"` 就说明地址、Key、模型名三样都对。
+
+再验一次**工具调用**通不通（这才是 SidePilot 真正依赖的能力）：
+
+```bash
+curl https://api.deepseek.com/v1/chat/completions \
+  -H "Authorization: Bearer sk-你的key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model":"deepseek-v4-flash",
+    "messages":[{"role":"user","content":"北京现在多少度"}],
+    "tools":[{"type":"function","function":{"name":"get_weather","description":"查天气","parameters":{"type":"object","properties":{"city":{"type":"string"}},"required":["city"]}}}],
+    "stream":false
+  }'
+```
+
+返回里出现 `tool_calls` 字段，说明这个模型能用；只返回一段文字、没有 `tool_calls`，就换一个模型。
+
+### 三个最常见的新手坑
+
+1. **baseUrl 多写了 `/chat/completions`** —— 代码会自动拼这一段，你多写就变成 `.../chat/completions/chat/completions`，必报 404。
+2. **Key 和地址不配套** —— 拿通义的 Key 填 DeepSeek 的地址，必然 401。哪家的 Key 配哪家的地址。
+3. **模型名照抄了过时的文章** —— 官方早就改过名了。以控制台为准。
+
+### 要花多少钱
+
+按主流档位算，一次带两三个工具调用的问答大概 1000~3000 token，折合几厘到几分钱。
+管理端「概览」能看到累计 token 和估算费用，填了 `pricing` 才有金额。
+
 ---
 
 ## 装进你自己的项目
@@ -50,11 +155,24 @@ node vendor/sidepilot/cli/index.mjs init --root . --name "项目名"
 参数名必须与源码逐字一致，不许编造；实在不确定的保持 low 并告诉我。
 
 ## 5. 填模型配置（这一步不做，对话一定失败）
+先确认我有没有给你这三样：接口地址、API Key、模型名。
+**缺任何一样就停下来问我，不要猜，也不要用免费试用额度自己顶替。**
+
 编辑 .sidepilot/config.json：
-  llm.baseUrl   OpenAI 兼容地址，例如 https://api.deepseek.com/v1
-  llm.apiKey    我给你的 Key（写进去，不要打印出来）
-  llm.model     模型名，例如 deepseek-chat
-  api.baseUrl   项目启动后的地址，例如 http://127.0.0.1:3000
+  llm.baseUrl   OpenAI 兼容地址，到 /v1 为止，不要带 /chat/completions
+                例如 https://api.deepseek.com/v1
+  llm.apiKey    我给你的 Key（写进去，不要打印出来，不要写进日志）
+  llm.model     模型名，例如 deepseek-v4-flash
+                （必须支持 tool calling，否则助手调不动任何接口）
+  api.baseUrl   你的业务系统启动后的地址，例如 http://127.0.0.1:3000
+  llm.pricing   可选，每百万 token 单价，填了管理端才能算钱
+
+填完先自检一次，别等装完再排查：
+  curl <baseUrl>/chat/completions -H "Authorization: Bearer <key>" \
+    -H "Content-Type: application/json" \
+    -d '{"model":"<model>","messages":[{"role":"user","content":"只回复：收到"}]}'
+返回里有正常回答再往下走；401 是 Key 不对，404 是地址或模型名不对。
+
 再把 profile 填上，这三项决定助手说话像不像这个系统的人：
   domain      业务是干什么的
   topTasks    用户最常做的事（会变成首屏快捷提问）

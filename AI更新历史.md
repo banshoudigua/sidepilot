@@ -446,6 +446,65 @@ GET  /api/admin/logs            工具调用流水
 
 ---
 
+### 补上大模型接入说明（README 缺这一块等于没交付）
+
+**问题**：仓库上线后，README 里只有安装指令第 5 步带了一句 `llm.baseUrl / apiKey / model`，
+既没说去哪申请，也没说模型必须支持 tool calling，更没说不填会怎样。
+外人拿到仓库根本不知道怎么接模型——这是硬伤。
+
+**做了四件事**
+
+**1. README 新增独立章节「先准备一个大模型」，放在安装指令之前**
+
+- 三样东西缺一不可：接口地址、API Key、**支持 tool calling 的模型名**
+- 说明为什么必须支持 tool calling：SidePilot 全部能力靠 function calling，不支持就只能闲聊
+- 七家服务对照表：DeepSeek / 通义百炼 / Kimi / 智谱 GLM / 硅基流动 / OpenAI / 本地 Ollama
+- 填进 `config.json` 的完整 JSON 示例（含 `pricing` 说明）
+- **两段 curl 自检命令**：一段验地址+Key+模型名，一段专门验 tool_calls 通不通
+- 三个新手坑：baseUrl 多写 `/chat/completions`、Key 和地址不配套、模型名照抄过时文章
+- 一句话成本说明
+
+**2. 首页补前置提示条**
+
+`index.html` 的 03「怎么接」开头加了一个赭橙竖线提示条，明说「缺一样，助手就是个空壳」。
+
+**3. 代码：缺配置时给出明确错误，而不是偷偷用默认值**
+
+原来 `llm.mjs` 里 `model: conf.model || 'deepseek-v4.1-flash'` —— 这个默认值是本机中转站的模型，
+别人没填就会拿一个不存在的模型名去请求，报出来的错跟真正原因没关系。
+
+改成：
+- 默认值清空
+- `chat()` 开头检查 baseUrl / apiKey / model 三项，缺哪项直接返回中文错误：
+  「模型还没配置完整，缺少：llm.apiKey（密钥）。请编辑 .sidepilot/config.json 的 llm 段，也可以直接在 /pilot/admin 的「模型与提示词」里填。」
+
+实测：空配置报三项全缺、只缺 Key 精确报 Key。
+
+**4. 修一个已经过时的模型名**
+
+查证发现 **`deepseek-chat` / `deepseek-reasoner` 已于 2026-07-24 弃用**，
+现在官方模型是 `deepseek-v4-flash`（非思考）/ `deepseek-v4-pro`（强推理）。
+原来的 README 和两份 `config.example.json` 都还写着 `deepseek-chat`，跟着官方文章抄的人会直接踩坑。
+
+已全部改为 `deepseek-v4-flash`，并在文档里加了一句提醒：**模型名变动很快，以控制台模型列表为准**，
+所以文档重点放在「怎么自检」而不是把模型名写死。
+
+**验证**
+
+- 空配置 / 只缺 Key 两种情况的报错文案都实测过
+- 正常配置（demo-shop）仍能对话：问「店里一共几个商品」→ 调 `db_query` → 「店里一共 6 个商品」
+- 首页提示条截图确认排版正常，未挤压下方模式卡
+
+**文件**
+
+- `README.md` — 新增「先准备一个大模型」整章；安装指令第 5 步补自检命令与"缺就停下来问"
+- `index.html` — 03 区块加前置提示条 + 对应样式
+- `sidepilot/src/llm.mjs` — 去掉默认模型名，缺配置时返回明确中文错误
+- `sidepilot/examples/demo-shop/.sidepilot/config.example.json` — model 改 `deepseek-v4-flash`
+- `sidepilot/examples/demo-static/.sidepilot/config.example.json` — 同上
+
+---
+
 ## 模板（后续每次变更照此格式追加）
 
 ### 新增 / 修改 / 修复：一句话说明

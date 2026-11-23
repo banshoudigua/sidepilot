@@ -7,23 +7,22 @@
   "prefix": "/pilot",
   "manifestPath": "./.sidepilot/manifest.json",
   "dbPath": "./.sidepilot/pilot.db",
-
   "llm": {
     "baseUrl": "https://api.deepseek.com/v1",
     "apiKey": "在这里填你的 Key",
-    "model": "deepseek-chat",
+    "model": "deepseek-v4-flash",
     "temperature": 0.3,
     "pricing": {
       "inputPerMillion": 0,
       "outputPerMillion": 0
     }
   },
-
   "file": {
-    "editableDirs": ["www"],
+    "editableDirs": [
+      "www"
+    ],
     "syntaxCheck": true
   },
-
   "profile": {
     "name": "山间咖啡官网",
     "kind": "static_site",
@@ -34,9 +33,17 @@
       "首页那句介绍改得再口语一点",
       "帮我看看现在有哪些页面可以改"
     ],
-    "capabilities": ["file"],
-    "restricted": ["联系电话", "备案号", "门店地址"],
-    "editableDirs": ["www"],
+    "capabilities": [
+      "file"
+    ],
+    "restricted": [
+      "联系电话",
+      "备案号",
+      "门店地址"
+    ],
+    "editableDirs": [
+      "www"
+    ],
     "buildStep": null
   }
 }

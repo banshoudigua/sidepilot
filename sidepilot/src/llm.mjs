@@ -23,7 +23,9 @@ export function createLLM(cfg) {
     return {
       baseUrl: String(conf.baseUrl || '').replace(/\/+$/, ''),
       apiKey: conf.apiKey || '',
-      model: conf.model || 'deepseek-v4.1-flash',
+      // 不给默认模型名：默认值会让"忘填"变成"用一个莫名其妙的模型报错"，
+      // 不如留空，下面直接告诉用户缺哪一项
+      model: conf.model || '',
       temperature: conf.temperature == null ? 0.3 : conf.temperature
     };
   };
@@ -43,6 +45,23 @@ export function createLLM(cfg) {
      */
     chat(opt) {
       const c = pick();
+
+      // 三样缺任何一样都别发请求：直接说清楚缺什么，比让上游报 401/404 强
+      const missing = [];
+      if (!c.baseUrl) missing.push('llm.baseUrl（接口地址）');
+      if (!c.apiKey) missing.push('llm.apiKey（密钥）');
+      if (!c.model) missing.push('llm.model（模型名）');
+      if (missing.length) {
+        return Promise.resolve({
+          content: '',
+          toolCalls: [],
+          reasoning: '',
+          usage: null,
+          error: '模型还没配置完整，缺少：' + missing.join('、') +
+            '。请编辑 .sidepilot/config.json 的 llm 段，也可以直接在 /pilot/admin 的「模型与提示词」里填。'
+        });
+      }
+
       const body = {
         model: c.model,
         messages: opt.messages,

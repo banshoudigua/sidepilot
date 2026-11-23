@@ -448,6 +448,36 @@ h2 {
 }
 .cap:hover .corner { border-color: var(--accent); }
 
+/* 前置条件提示条：接入之前必须先有大模型 */
+.prereq {
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--accent);
+  background: var(--paper-lift);
+  border-radius: 0 3px 3px 0;
+  padding: 16px 18px;
+  margin-bottom: 22px;
+  font-size: 13.5px;
+  color: var(--ink-2);
+  line-height: 1.72;
+}
+.prereq b { font-weight: 600; color: var(--ink); }
+.prereq code {
+  font-family: var(--mono);
+  font-size: 12px;
+  background: #F0ECE0;
+  padding: 1px 5px;
+  border-radius: 2px;
+  color: var(--accent-ink);
+}
+.prereq .lab {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: .1em;
+  color: var(--accent);
+  margin-right: 8px;
+}
+
 /* ---------- 接入方式 ---------- */
 .modes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
 .mode {
@@ -820,6 +850,13 @@ html.anim .reveal.in { opacity: 1; transform: none; }
       <div class="sec-num">03 / 怎么接</div>
       <h2>两种接法，选择权在你这边的技术栈</h2>
       <p>四层里只有「挂载方式」绑 Node，其余三层跟宿主语言无关。所以 PHP、Java、.NET 的老系统同样能接。</p>
+    </div>
+
+    <div class="prereq reveal">
+      <span class="lab">前置</span>
+      接入之前先准备三样东西：一个 <b>OpenAI 兼容的接口地址</b>、一个 <b>API Key</b>、一个
+      <b>支持 tool calling 的模型名</b>。填在 <code>.sidepilot/config.json</code> 的 llm 段。
+      DeepSeek、通义、Kimi、智谱、本地 Ollama 都行——<b>缺一样，助手就是个空壳</b>，一句话都答不出来。
     </div>
 
     <div class="modes">
