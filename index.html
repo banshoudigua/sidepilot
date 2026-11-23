@@ -1112,10 +1112,11 @@ location /pilot/ {
     // 某些内嵌/后台态浏览器里 hidden 会一直是 true，一判断就永远不推进，
     // 卡片会永远空白。改用可见性事件驱动，事件不触发就照常播。
     if (idx >= seq.length) {
-      // 播完清空，短暂停顿再循环
+      // 播完直接从头来，清空和重绘放在同一帧，
+      // 否则中间那段空窗在慢速环境里会被人看成"演示坏了"
       box.innerHTML = '';
       idx = 0;
-      timer = setTimeout(step, 380);
+      step();
       return;
     }
 
