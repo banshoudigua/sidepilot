@@ -1,0 +1,49 @@
+{
+  "project": {
+    "name": "山间咖啡 · 门店后台",
+    "slug": "demo-shop"
+  },
+  "projectRoot": ".",
+  "prefix": "/pilot",
+  "manifestPath": "./.sidepilot/manifest.json",
+  "dbPath": "./.sidepilot/pilot.db",
+
+  "llm": {
+    "baseUrl": "https://api.deepseek.com/v1",
+    "apiKey": "在这里填你的 Key",
+    "model": "deepseek-chat",
+    "temperature": 0.3,
+    "pricing": {
+      "inputPerMillion": 0,
+      "outputPerMillion": 0
+    }
+  },
+
+  "api": {
+    "baseUrl": "http://127.0.0.1:8080"
+  },
+
+  "db": {
+    "path": "data/shop.db",
+    "maxRows": 200
+  },
+
+  "profile": {
+    "name": "山间咖啡 · 门店后台",
+    "kind": "api_app",
+    "audience": "internal",
+    "domain": "一家精品咖啡店的门店管理系统，管商品库存与销售统计",
+    "topTasks": [
+      "这个月卖得最好的商品是哪些",
+      "哪些商品库存告急",
+      "近 30 天一共卖了多少钱",
+      "帮我加一个新商品"
+    ],
+    "capabilities": ["api", "db"],
+    "restricted": ["不要修改已有订单记录"]
+  },
+
+  "prompt": {
+    "extra": ""
+  }
+}

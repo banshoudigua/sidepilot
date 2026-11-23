@@ -1,0 +1,42 @@
+{
+  "project": {
+    "name": "山间咖啡官网",
+    "slug": "demo-static"
+  },
+  "projectRoot": ".",
+  "prefix": "/pilot",
+  "manifestPath": "./.sidepilot/manifest.json",
+  "dbPath": "./.sidepilot/pilot.db",
+
+  "llm": {
+    "baseUrl": "https://api.deepseek.com/v1",
+    "apiKey": "在这里填你的 Key",
+    "model": "deepseek-chat",
+    "temperature": 0.3,
+    "pricing": {
+      "inputPerMillion": 0,
+      "outputPerMillion": 0
+    }
+  },
+
+  "file": {
+    "editableDirs": ["www"],
+    "syntaxCheck": true
+  },
+
+  "profile": {
+    "name": "山间咖啡官网",
+    "kind": "static_site",
+    "audience": "external",
+    "domain": "一家云南保山精品咖啡店的品牌官网，纯静态页面，用来展示产品和门店信息",
+    "topTasks": [
+      "把耶加雪菲的价格改成 138",
+      "首页那句介绍改得再口语一点",
+      "帮我看看现在有哪些页面可以改"
+    ],
+    "capabilities": ["file"],
+    "restricted": ["联系电话", "备案号", "门店地址"],
+    "editableDirs": ["www"],
+    "buildStep": null
+  }
+}

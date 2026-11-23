@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>山间咖啡 · 门店后台</title>
+<style>
+  :root{
+    --paper:#FAF7F2; --card:#FFFFFF; --ink:#1F1B16; --ink2:#5A5147;
+    --muted:#948A7C; --line:#E8E0D3; --line2:#D8CDBC;
+    --brown:#6B4423; --accent:#B45309; --green:#3F6212; --red:#9A3412;
+    --sans:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+    --serif:Georgia,"Songti SC","SimSun",serif;
+    --mono:"SF Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .shell{display:grid;grid-template-columns:210px 1fr;min-height:100vh}
+
+  /* 侧栏 */
+  .rail{border-right:1px solid var(--line);padding:26px 0;position:sticky;top:0;height:100vh}
+  .logo{padding:0 24px 26px;display:flex;align-items:center;gap:9px}
+  .logo-mark{width:26px;height:26px;border-radius:50%;background:var(--brown);position:relative;flex:0 0 auto}
+  .logo-mark::after{content:"";position:absolute;inset:7px;border-radius:50%;background:var(--paper)}
+  .logo b{font-family:var(--serif);font-size:15px;font-weight:400;letter-spacing:.01em}
+  .nav a{display:block;padding:8px 24px;color:var(--ink2);text-decoration:none;font-size:13.5px;border-left:2px solid transparent;transition:.15s}
+  .nav a:hover{color:var(--ink);background:#F3EEE6}
+  .nav a.on{color:var(--brown);border-left-color:var(--brown);background:#fff;font-weight:500}
+
+  /* 主区 */
+  .main{padding:30px 38px 90px;max-width:1080px}
+  .page-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:26px;flex-wrap:wrap}
+  h1{font-family:var(--serif);font-size:26px;font-weight:400;letter-spacing:-.01em}
+  .today{font-family:var(--mono);font-size:11.5px;color:var(--muted);letter-spacing:.05em}
+
+  /* 指标卡 */
+  .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:32px}
+  .metric{background:var(--card);padding:16px 18px}
+  .metric span{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .metric b{font-family:var(--serif);font-size:24px;font-weight:400;line-height:1.1}
+  .metric small{color:var(--muted);font-size:11.5px;margin-left:3px}
+
+  /* 区块 */
+  .block-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .block-head h2{font-family:var(--serif);font-size:16px;font-weight:400}
+  .btn{border:1px solid var(--line2);background:#fff;color:var(--ink);font-family:var(--sans);font-size:12.5px;padding:6px 14px;border-radius:5px;cursor:pointer;transition:.15s}
+  .btn:hover{background:#F3EEE6}
+  .btn-primary{background:var(--brown);border-color:var(--brown);color:#fff}
+  .btn-primary:hover{background:#573619}
+
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line)}
+  th{text-align:left;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:400;padding:10px 14px;border-bottom:1px solid var(--line)}
+  td{padding:12px 14px;border-bottom:1px solid var(--line);font-size:13.5px}
+  tr:last-child td{border-bottom:0}
+  tr:hover td{background:#FCFAF6}
+  .tag{font-family:var(--mono);font-size:10.5px;padding:2px 7px;border-radius:3px;background:#F3EEE6;color:var(--ink2)}
+  .num{font-family:var(--mono);font-size:13px}
+  .low{color:var(--red)}
+  .price{font-family:var(--mono);font-size:13.5px}
+
+  /* 新增表单 */
+  .panel{margin-top:30px;border:1px solid var(--line);background:var(--card);padding:18px}
+  .panel h3{font-family:var(--serif);font-size:14px;font-weight:400;margin-bottom:14px}
+  .form-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:10px;align-items:end}
+  label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  input,select{width:100%;border:1px solid var(--line2);background:var(--paper);padding:7px 9px;font-family:var(--sans);font-size:13px;border-radius:4px;color:var(--ink);outline:none;transition:.15s}
+  input:focus,select:focus{border-color:var(--brown);background:#fff}
+  .hint{margin-top:14px;font-size:12.5px;color:var(--muted)}
+  .hint b{color:var(--brown);font-weight:500}
+
+  @media(max-width:860px){
+    .shell{grid-template-columns:1fr}
+    .rail{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:16px 0}
+    .nav{display:flex;overflow:auto}
+    .nav a{border-left:0;border-bottom:2px solid transparent;white-space:nowrap}
+    .nav a.on{border-left:0;border-bottom-color:var(--brown)}
+    .main{padding:22px 18px 80px}
+    .metrics{grid-template-columns:repeat(2,1fr)}
+    .form-row{grid-template-columns:1fr 1fr}
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <aside class="rail">
+    <div class="logo"><span class="logo-mark"></span><b>山间咖啡</b></div>
+    <nav class="nav">
+      <a href="#" class="on">门店总览</a>
+      <a href="#goods">商品管理</a>
+      <a href="#new">入库登记</a>
+      <a href="/pilot/docs">接口文档</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="page-head">
+      <h1>门店总览</h1>
+      <span class="today" id="today"></span>
+    </div>
+
+    <div class="metrics">
+      <div class="metric"><span>近 30 天营收</span><b id="mRevenue">—</b></div>
+      <div class="metric"><span>订单数</span><b id="mOrders">—</b></div>
+      <div class="metric"><span>在售商品</span><b id="mProducts">—</b></div>
+      <div class="metric"><span>库存预警</span><b id="mLow" class="low">—</b></div>
+    </div>
+
+    <div class="block-head" id="goods">
+      <h2>商品清单</h2>
+      <button class="btn" onclick="loadAll()">刷新</button>
+    </div>
+    <table>
+      <thead><tr><th>商品</th><th>分类</th><th>单价</th><th>库存</th><th></th></tr></thead>
+      <tbody id="goodsBody"><tr><td colspan="5" style="color:var(--muted)">加载中…</td></tr></tbody>
+    </table>
+
+    <div class="panel" id="new">
+      <h3>入库登记</h3>
+      <div class="form-row">
+        <div><label>商品名称</label><input id="fName" placeholder="例如：哥伦比亚慧兰"></div>
+        <div><label>单价</label><input id="fPrice" type="number" placeholder="0"></div>
+        <div><label>库存</label><input id="fStock" type="number" placeholder="0"></div>
+        <div><label>分类</label>
+          <select id="fCat"><option>咖啡豆</option><option>器具</option><option>其他</option></select>
+        </div>
+        <button class="btn btn-primary" onclick="addProduct()">保存</button>
+      </div>
+      <p class="hint">也可以直接对右下角的 <b>店长助手</b> 说：把这个月卖得最好的三个商品告诉我。</p>
+    </div>
+  </main>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  $('today').textContent = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  function loadStats() {
+    fetch('/api/stats/sales?days=30').then(r => r.json()).then(d => {
+      if (!d.ok) return;
+      $('mRevenue').innerHTML = '¥' + Math.round(d.revenue).toLocaleString();
+      $('mOrders').textContent = d.orders;
+    });
+  }
+
+  function loadProducts() {
+    fetch('/api/products').then(r => r.json()).then(d => {
+      if (!d.ok) return;
+      $('mProducts').textContent = d.items.length;
+      $('mLow').textContent = d.items.filter(i => i.stock < 15).length;
+
+      $('goodsBody').innerHTML = d.items.map(p => `
+        <tr>
+          <td>${p.name}</td>
+          <td><span class="tag">${p.category}</span></td>
+          <td class="price">¥${p.price}</td>
+          <td class="num ${p.stock < 15 ? 'low' : ''}">${p.stock}</td>
+          <td style="color:var(--muted);font-size:12px">${p.stock < 15 ? '库存偏低' : ''}</td>
+        </tr>`).join('');
+    });
+  }
+
+  function addProduct() {
+    const body = {
+      name: $('fName').value.trim(),
+      price: Number($('fPrice').value),
+      stock: Number($('fStock').value || 0),
+      category: $('fCat').value
+    };
+    if (!body.name || !body.price) { alert('请填写商品名称和单价'); return; }
+
+    fetch('/api/products', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(r => r.json()).then(d => {
+      if (!d.ok) { alert(d.error || '保存失败'); return; }
+      $('fName').value = ''; $('fPrice').value = ''; $('fStock').value = '';
+      loadAll();
+    });
+  }
+
+  function loadAll() { loadStats(); loadProducts(); }
+  loadAll();
+</script>
+
+<!-- 一行接入 AI 助手 -->
+<script src="/pilot/sdk.js" data-prefix="/pilot" data-label="店长助手"></script>
+</body>
+</html>

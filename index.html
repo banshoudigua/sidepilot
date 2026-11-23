@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SidePilot · 给存量系统装一个 AI 助手</title>
+<meta name="description" content="SidePilot 扫出你系统里已有的接口，生成文档，挂上能调接口、查数据库、改页面的 AI 助手。零第三方依赖，业务代码只加两行。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   SidePilot 首页
+   视觉方向：纸墨质感 + 工程图纸。暖纸底、墨黑字、赭橙点缀，
+   极细网格与刻度线营造"技术图纸"的秩序感。
+   ============================================================ */
+
+:root {
+  --paper:      #F4F1E8;
+  --paper-lift: #FAF8F2;
+  --ink:        #1A1917;
+  --ink-2:      #3B382F;
+  --muted:      #6E6A5F;
+  --faint:      #969081;
+  --line:       #DDD7C8;
+  --line-soft:  #E8E3D6;
+  --line-strong:#C5BEAB;
+  --accent:     #C2410C;
+  --accent-ink: #8F2F08;
+  --accent-soft:#F6E6DA;
+  --green:      #3D6B52;
+  --green-soft: #E3EDE6;
+  --red:        #A8342B;
+  --red-soft:   #F6E2DF;
+
+  --serif: 'Noto Serif SC', 'Source Han Serif SC', 'Songti SC', 'SimSun', Georgia, serif;
+  --sans:  'PingFang SC', 'HarmonyOS Sans SC', 'Microsoft YaHei', 'Segoe UI', system-ui, sans-serif;
+  --mono:  'JetBrains Mono', 'Cascadia Code', Consolas, 'Courier New', monospace;
+
+  --edge: clamp(20px, 5vw, 76px);
+  --maxw: 1280px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.72;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  /* 图纸网格：两组极细线，透明度压到几乎看不见但能提供秩序 */
+  background-image:
+    linear-gradient(to right, rgba(26,25,23,.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(26,25,23,.035) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+/* 纸纹：一层极轻的噪点，避免纯色发"数码感" */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: .5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='.32'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+
+::selection { background: var(--accent); color: #fff; }
+
+/* 细滚动条 */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--paper); }
+::-webkit-scrollbar-thumb { background: var(--line-strong); border: 3px solid var(--paper); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+.wrap { width: 100%; max-width: var(--maxw); margin: 0 auto; padding: 0 var(--edge); position: relative; z-index: 2; }
+
+/* ---------- 顶部导航 ---------- */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom: 1px solid var(--line);
+  background: rgba(244,241,232,.86);
+  backdrop-filter: saturate(180%) blur(10px);
+  -webkit-backdrop-filter: saturate(180%) blur(10px);
+}
+.nav-in {
+  max-width: var(--maxw);
+  margin: 0 auto;
+  padding: 0 var(--edge);
+  height: 62px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 14.5px; letter-spacing: .02em; }
+.brand i {
+  width: 9px; height: 9px; background: var(--accent); transform: rotate(45deg); display: block;
+  box-shadow: 0 0 0 3px rgba(194,65,12,.12);
+}
+.brand b { font-weight: 500; }
+.nav-links { display: flex; gap: 26px; margin-left: auto; }
+.nav-links a {
+  color: var(--muted); text-decoration: none; font-size: 13.5px; position: relative; padding: 4px 0;
+  transition: color .18s;
+}
+.nav-links a::after {
+  content: ''; position: absolute; left: 0; bottom: 0; width: 0; height: 1px;
+  background: var(--accent); transition: width .22s ease;
+}
+.nav-links a:hover { color: var(--ink); }
+.nav-links a:hover::after { width: 100%; }
+.nav-cta {
+  margin-left: 8px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--paper-lift);
+  background: var(--ink);
+  padding: 7px 15px;
+  border-radius: 3px;
+  text-decoration: none;
+  transition: background .2s, transform .2s;
+  white-space: nowrap;
+}
+.nav-cta:hover { background: var(--accent); transform: translateY(-1px); }
+
+/* ---------- Hero ---------- */
+.hero {
+  padding: clamp(52px, 8vw, 104px) 0 clamp(48px, 6vw, 84px);
+  position: relative;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  left: var(--edge); right: var(--edge); bottom: 0;
+  height: 1px; background: var(--line);
+  max-width: var(--maxw);
+}
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr);
+  gap: clamp(32px, 5vw, 68px);
+  align-items: start;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  border: 1px solid var(--line-strong);
+  background: var(--paper-lift);
+  padding: 5px 11px;
+  border-radius: 2px;
+  margin-bottom: 26px;
+}
+.eyebrow em { font-style: normal; color: var(--muted); letter-spacing: .06em; }
+
+h1 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: clamp(36px, 4.4vw, 62px);
+  line-height: 1.18;
+  letter-spacing: -.022em;
+  margin-bottom: 24px;
+}
+h1 .mark {
+  position: relative;
+  color: var(--accent);
+  white-space: nowrap;
+}
+h1 .mark::after {
+  content: '';
+  position: absolute;
+  left: -2px; right: -2px; bottom: 4px;
+  height: 7px;
+  background: var(--accent-soft);
+  z-index: -1;
+  transform: skewX(-8deg);
+}
+
+.lede {
+  font-size: clamp(15.5px, 1.35vw, 17.5px);
+  color: var(--ink-2);
+  max-width: 33em;
+  margin-bottom: 12px;
+}
+.lede b { font-weight: 600; color: var(--ink); }
+
+.sub-lede {
+  font-size: 14px;
+  color: var(--muted);
+  max-width: 34em;
+  margin-bottom: 34px;
+}
+
+.cta-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 14px; font-weight: 500;
+  padding: 12px 22px;
+  border-radius: 3px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: all .2s ease;
+  cursor: pointer;
+}
+.btn-solid { background: var(--ink); color: var(--paper-lift); }
+.btn-solid:hover { background: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 20px -8px rgba(194,65,12,.6); }
+.btn-line { border-color: var(--line-strong); color: var(--ink); background: transparent; }
+.btn-line:hover { border-color: var(--ink); background: var(--paper-lift); }
+.btn .arw { font-family: var(--mono); font-size: 12px; opacity: .6; transition: transform .2s; }
+.btn:hover .arw { transform: translateX(3px); opacity: 1; }
+
+.hero-meta {
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 26px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--muted);
+  letter-spacing: .02em;
+}
+.hero-meta span { display: inline-flex; align-items: center; gap: 7px; }
+.hero-meta span::before {
+  content: ''; width: 4px; height: 4px; border-radius: 50%; background: var(--line-strong);
+}
+.hero-meta span.hot::before { background: var(--accent); }
+
+/* ---------- Hero 右侧：演示卡 ---------- */
+.demo {
+  background: var(--paper-lift);
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.9) inset,
+    0 18px 48px -22px rgba(26,25,23,.28),
+    0 3px 10px -4px rgba(26,25,23,.08);
+  overflow: hidden;
+  position: relative;
+}
+.demo::before {
+  /* 卡角刻度：工程图纸的角标 */
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 34px; height: 34px;
+  border-right: 1px solid var(--line-soft);
+  border-bottom: 1px solid var(--line-soft);
+  pointer-events: none;
+}
+.demo-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  background: linear-gradient(to bottom, #fffdf8, var(--paper-lift));
+}
+.demo-bar .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line-strong); }
+.demo-bar .t {
+  font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: .04em; margin-left: 4px;
+}
+.demo-bar .live {
+  margin-left: auto; font-family: var(--mono); font-size: 10px; letter-spacing: .1em;
+  color: var(--green); display: flex; align-items: center; gap: 5px;
+}
+.demo-bar .live::before {
+  content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--green);
+  animation: blink 1.8s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+.demo-body {
+  padding: 16px 15px 18px;
+  min-height: 372px;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  font-size: 13px;
+}
+
+/* 消息气泡 */
+.d-user {
+  align-self: flex-end;
+  background: #EDE7D8;
+  border: 1px solid var(--line);
+  padding: 7px 12px;
+  border-radius: 9px 9px 2px 9px;
+  font-size: 12.5px;
+  max-width: 88%;
+}
+.d-tool {
+  display: flex; align-items: center; gap: 7px;
+  font-family: var(--mono); font-size: 10.5px; color: var(--muted);
+  padding: 2px 0 2px 3px;
+  letter-spacing: .01em;
+}
+.d-tool .pulse {
+  width: 5px; height: 5px; border-radius: 50%; background: var(--accent); flex: 0 0 auto;
+  animation: blink 1s infinite;
+}
+.d-tool.done .pulse { background: var(--green); animation: none; }
+.d-tool .nm { color: var(--ink-2); }
+.d-tool .sm { color: var(--faint); }
+.d-tool .ms { margin-left: auto; color: var(--line-strong); }
+
+/* 迷你表格 */
+.d-table {
+  border: 1px solid var(--line-soft);
+  border-radius: 2px;
+  overflow: hidden;
+  font-size: 11.5px;
+}
+.d-table .tr { display: grid; grid-template-columns: 1fr 42px 62px; }
+.d-table .tr + .tr { border-top: 1px solid var(--line-soft); }
+.d-table .th {
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: .06em;
+  color: var(--muted); background: #F3EFE4; text-transform: uppercase;
+}
+.d-table .td, .d-table .th { padding: 5px 8px; }
+.d-table .num { text-align: right; font-family: var(--mono); font-size: 11px; }
+.d-table .tr:nth-child(2) .td:first-child { color: var(--accent-ink); font-weight: 500; }
+
+.d-answer { font-size: 12.5px; color: var(--ink-2); line-height: 1.65; }
+.d-answer b { font-weight: 600; color: var(--ink); }
+
+.d-actions { display: flex; gap: 6px; margin-top: 2px; }
+.d-actions i {
+  font-style: normal; font-family: var(--mono); font-size: 9.5px;
+  border: 1px solid var(--line); padding: 2px 8px; border-radius: 10px; color: var(--muted);
+}
+
+/* 入场动画：每条依次浮起 */
+.pop { animation: pop .42s cubic-bezier(.22,.9,.28,1) both; }
+@keyframes pop {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- 通用区块 ---------- */
+section { position: relative; }
+/* grid 子项默认 min-width:auto，内容一宽就会把旁边的列挤扁，统一兜一层 */
+.hero-grid > *, .pains > *, .caps > *, .modes > *, .guard-grid > *, .entries > * { min-width: 0; }
+.sec { padding: clamp(54px, 7vw, 92px) 0; border-bottom: 1px solid var(--line); }
+.sec-head { margin-bottom: clamp(30px, 4vw, 50px); max-width: 780px; }
+.sec-num {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .16em;
+  color: var(--accent);
+  margin-bottom: 14px;
+  display: flex; align-items: center; gap: 12px;
+}
+.sec-num::after { content: ''; height: 1px; width: 44px; background: var(--line-strong); }
+h2 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: clamp(25px, 3.2vw, 37px);
+  line-height: 1.28;
+  letter-spacing: -.012em;
+  margin-bottom: 14px;
+}
+.sec-head p { color: var(--muted); font-size: 15px; max-width: 42em; text-wrap: pretty; }
+
+/* ---------- 三问：痛点 ---------- */
+.pains {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--paper-lift);
+}
+.pain { padding: 30px 26px 32px; border-right: 1px solid var(--line-soft); position: relative; }
+.pain:last-child { border-right: 0; }
+.pain .q {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; color: var(--accent);
+  margin-bottom: 14px;
+}
+.pain h3 {
+  font-family: var(--serif); font-size: 19px; font-weight: 600; line-height: 1.42;
+  margin-bottom: 10px;
+}
+.pain p { font-size: 13.5px; color: var(--muted); line-height: 1.7; text-wrap: pretty; }
+.pain::after {
+  /* 悬停时底部出现一条赭橙线，模拟图纸标注 */
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+  background: var(--accent); transform: scaleX(0); transform-origin: left;
+  transition: transform .3s ease;
+}
+.pain:hover::after { transform: scaleX(1); }
+
+/* ---------- 能力域 ---------- */
+.caps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.cap {
+  border: 1px solid var(--line);
+  background: var(--paper-lift);
+  border-radius: 3px;
+  padding: 26px 24px 24px;
+  position: relative;
+  transition: border-color .22s, box-shadow .22s, transform .22s;
+}
+.cap:hover {
+  border-color: var(--line-strong);
+  box-shadow: 0 14px 34px -20px rgba(26,25,23,.3);
+  transform: translateY(-2px);
+}
+.cap-top { display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+.cap-tag {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
+  color: var(--paper-lift); background: var(--ink);
+  padding: 2px 7px; border-radius: 2px;
+}
+.cap h3 { font-family: var(--serif); font-size: 19px; font-weight: 600; }
+.cap p { font-size: 13.5px; color: var(--muted); line-height: 1.72; margin-bottom: 14px; text-wrap: pretty; }
+.cap code {
+  display: block;
+  font-family: var(--mono); font-size: 11.5px;
+  background: #F0ECE0;
+  border-left: 2px solid var(--line-strong);
+  padding: 8px 11px;
+  color: var(--ink-2);
+  overflow-x: auto;
+  white-space: nowrap;
+  border-radius: 0 2px 2px 0;
+}
+.cap .corner {
+  position: absolute; top: 10px; right: 10px;
+  width: 9px; height: 9px;
+  border-top: 1px solid var(--line-strong);
+  border-right: 1px solid var(--line-strong);
+  transition: border-color .22s;
+}
+.cap:hover .corner { border-color: var(--accent); }
+
+/* ---------- 接入方式 ---------- */
+.modes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+.mode {
+  border: 1px solid var(--line);
+  background: var(--paper-lift);
+  border-radius: 3px;
+  padding: 26px 24px;
+}
+.mode-label {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: .09em;
+  color: var(--muted); margin-bottom: 16px;
+}
+.mode-label i { font-style: normal; width: 18px; height: 18px; border: 1px solid var(--line-strong); border-radius: 50%; display: grid; place-items: center; font-size: 9.5px; color: var(--accent); }
+.mode h3 { font-family: var(--serif); font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+.mode .who { font-size: 12px; color: var(--accent-ink); font-family: var(--mono); margin-bottom: 14px; letter-spacing: .02em; }
+.mode p { font-size: 13.5px; color: var(--muted); margin-bottom: 16px; line-height: 1.72; text-wrap: pretty; }
+.mode pre {
+  background: #F0ECE0;
+  border: 1px solid var(--line-soft);
+  border-radius: 2px;
+  padding: 13px 14px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.72;
+  color: var(--ink-2);
+}
+.mode pre .c { color: var(--muted); }
+.mode pre .k { color: var(--accent-ink); }
+
+/* 语言对照表 */
+.matrix { margin-top: 26px; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; background: var(--paper-lift); }
+.matrix table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.matrix th {
+  text-align: left; font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em;
+  color: var(--muted); text-transform: uppercase; font-weight: 500;
+  padding: 12px 16px; background: #F3EFE4; border-bottom: 1px solid var(--line);
+}
+.matrix td { padding: 13px 16px; border-bottom: 1px solid var(--line-soft); color: var(--ink-2); }
+.matrix tr:last-child td { border-bottom: 0; }
+.matrix td:first-child { font-weight: 500; color: var(--ink); }
+.matrix .zero {
+  font-family: var(--mono); font-size: 11.5px; color: var(--green);
+  background: var(--green-soft); padding: 2px 8px; border-radius: 2px; white-space: nowrap;
+}
+.matrix tr:hover td { background: #FBF9F3; }
+
+/* ---------- 安全 ---------- */
+/* 用 minmax(0, fr)：裸 fr 的下限是 min-content，右侧审计卡内容一宽就会把左列压扁 */
+.guard-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: clamp(28px, 4vw, 56px); align-items: start; }
+.guard-grid > * { min-width: 0; }
+.gates { list-style: none; counter-reset: gate; min-width: 0; }
+.gates li {
+  counter-increment: gate;
+  display: grid;
+  /* 伪元素算一个 grid 项，加上 b 和 span 共三个，所以必须显式指定各自落在哪一列，
+     否则 span 会被自动放到第一列的 34px 里，逐字换行 */
+  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 14px;
+  row-gap: 2px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line-soft);
+  align-items: baseline;
+}
+.gates li:last-child { border-bottom: 0; }
+.gates li::before {
+  content: counter(gate, decimal-leading-zero);
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: .04em;
+}
+.gates li b {
+  grid-column: 2;
+  grid-row: 1;
+  font-weight: 600;
+  font-size: 14px;
+}
+.gates li span {
+  grid-column: 2;
+  grid-row: 2;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.66;
+}
+
+.audit-card {
+  border: 1px solid var(--line);
+  background: var(--paper-lift);
+  border-radius: 3px;
+  padding: 22px 22px 24px;
+}
+.audit-card h3 {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .1em;
+  color: var(--muted); margin-bottom: 16px; text-transform: uppercase;
+}
+.audit-row {
+  display: grid;
+  grid-template-columns: 74px 1fr 84px;
+  gap: 10px;
+  font-size: 12px;
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--line-soft);
+  align-items: center;
+}
+.audit-row:last-of-type { border-bottom: 0; }
+.audit-row .t { font-family: var(--mono); font-size: 10.5px; color: var(--faint); }
+.audit-row .what { color: var(--ink-2); }
+.audit-row .what em { font-style: normal; font-family: var(--mono); font-size: 11px; color: var(--accent-ink); }
+.audit-row .who-badge {
+  font-family: var(--mono); font-size: 10px; text-align: center;
+  border: 1px solid var(--line); border-radius: 10px; padding: 2px 6px; color: var(--muted);
+}
+.audit-note { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line-soft); font-size: 12px; color: var(--muted); line-height: 1.7; }
+
+/* ---------- 入口 ---------- */
+.entries { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.entry {
+  border: 1px solid var(--line);
+  background: var(--paper-lift);
+  border-radius: 3px;
+  padding: 22px 22px 20px;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  transition: border-color .2s, background .2s, transform .2s;
+  position: relative;
+}
+.entry:hover { border-color: var(--accent); background: #FFFAF4; transform: translateY(-2px); }
+.entry .path { font-family: var(--mono); font-size: 12.5px; color: var(--accent-ink); margin-bottom: 10px; }
+.entry h3 { font-family: var(--serif); font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+.entry p { font-size: 12.5px; color: var(--muted); line-height: 1.65; }
+.entry .go {
+  position: absolute; top: 20px; right: 20px;
+  font-family: var(--mono); font-size: 12px; color: var(--line-strong);
+  transition: color .2s, transform .2s;
+}
+.entry:hover .go { color: var(--accent); transform: translate(2px,-2px); }
+
+/* ---------- 数据条 ---------- */
+.stats {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--ink);
+}
+.stat { padding: 26px 22px; border-right: 1px solid rgba(255,255,255,.09); }
+.stat:last-child { border-right: 0; }
+.stat b {
+  display: block;
+  font-family: var(--serif);
+  font-size: clamp(26px, 3.2vw, 38px);
+  font-weight: 600;
+  color: var(--paper-lift);
+  line-height: 1;
+  margin-bottom: 8px;
+  letter-spacing: -.02em;
+}
+.stat b em { font-style: normal; font-size: .52em; color: var(--accent); letter-spacing: 0; }
+.stat span { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; color: #9A9488; }
+
+/* ---------- 页脚 ---------- */
+footer { padding: 46px 0 54px; background: var(--paper); }
+.foot-row { display: flex; flex-wrap: wrap; gap: 20px 40px; align-items: baseline; justify-content: space-between; }
+.foot-brand { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 13.5px; }
+.foot-brand i { width: 8px; height: 8px; background: var(--accent); transform: rotate(45deg); display: block; }
+.foot-note { font-size: 12.5px; color: var(--muted); line-height: 1.8; max-width: 46em; }
+.foot-note b { color: var(--ink-2); font-weight: 500; }
+
+/* ---------- 滚动显现（渐进增强）----------
+   默认是可见的。只有 <html> 上有 .anim 时（说明 JS 正常跑起来了）
+   才先隐藏、等进入视口再浮现。这样脚本一旦出错，内容也不会全隐形。 */
+.reveal { opacity: 1; transform: none; }
+html.anim .reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity .7s cubic-bezier(.22,.9,.28,1), transform .7s cubic-bezier(.22,.9,.28,1);
+}
+html.anim .reveal.in { opacity: 1; transform: none; }
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 1000px) {
+  .hero-grid { grid-template-columns: 1fr; }
+  .demo-body { min-height: 330px; }
+  .pains { grid-template-columns: 1fr; }
+  .pain { border-right: 0; border-bottom: 1px solid var(--line-soft); }
+  .pain:last-child { border-bottom: 0; }
+  .caps { grid-template-columns: 1fr; }
+  .modes { grid-template-columns: 1fr; }
+  .guard-grid { grid-template-columns: 1fr; }
+  .entries { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .stat:nth-child(2) { border-right: 0; }
+  .stat:nth-child(1), .stat:nth-child(2) { border-bottom: 1px solid rgba(255,255,255,.09); }
+}
+@media (max-width: 720px) {
+  .nav-links { display: none; }
+  .nav-cta { margin-left: auto; }
+  .matrix { overflow-x: auto; }
+  .matrix table { min-width: 560px; }
+  h1 { font-size: clamp(32px, 8.4vw, 42px); }
+  .hero-meta { gap: 8px 18px; font-size: 10.5px; }
+  .audit-row { grid-template-columns: 64px 1fr; }
+  .audit-row .who-badge { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+  .reveal { opacity: 1; transform: none; }
+}
+</style>
+<script>
+  /* 尽早给 html 打上 anim 标记：只有它存在时，滚动显现的元素才先隐藏。
+     JS 被禁用或报错时这段不执行，内容直接可见，不会白屏。 */
+  document.documentElement.className += ' anim';
+</script>
+</head>
+<body>
+
+<!-- ============ 顶部导航 ============ -->
+<header class="nav">
+  <div class="nav-in">
+    <div class="brand"><i></i><b>SidePilot</b></div>
+    <nav class="nav-links">
+      <a href="#why">为什么</a>
+      <a href="#what">能做什么</a>
+      <a href="#how">怎么接</a>
+      <a href="#guard">安全</a>
+      <a href="#entry">入口</a>
+    </nav>
+    <a class="nav-cta" href="http://localhost:8080" target="_blank" rel="noopener">打开示例 ↗</a>
+  </div>
+</header>
+
+<!-- ============ Hero ============ -->
+<section class="hero">
+  <div class="wrap">
+    <div class="hero-grid">
+
+      <div>
+        <div class="eyebrow">SidePilot <em>/ 存量系统的 AI 助手层</em></div>
+
+        <h1>让跑了多年的系统<br><span class="mark">开口说话</span></h1>
+
+        <p class="lede">
+          它扫出你系统里<b>已经写好的接口</b>，生成一份给模型看的说明书，再挂上一个能调接口、能查数据库、能改页面的 AI 助手。
+          业务代码不动，入口加两行就行。
+        </p>
+        <p class="sub-lede">
+          不重写系统，不迁数据，不换框架。你原来那些接口，就是它干活的手。
+        </p>
+
+        <div class="cta-row">
+          <a class="btn btn-solid" href="#how">看看怎么接 <span class="arw">→</span></a>
+          <a class="btn btn-line" href="http://localhost:8080/pilot/admin" target="_blank" rel="noopener">打开管理端</a>
+        </div>
+
+        <div class="hero-meta">
+          <span class="hot">Node 零第三方依赖</span>
+          <span>5 种框架自动扫描</span>
+          <span>3 个开箱入口</span>
+          <span>6 道文件安全闸</span>
+        </div>
+      </div>
+
+      <!-- 演示卡：模拟真实对话流程，自动播放 -->
+      <div class="demo" aria-hidden="true">
+        <div class="demo-bar">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <span class="t">/pilot · 山间咖啡门店后台</span>
+          <span class="live">LIVE</span>
+        </div>
+        <div class="demo-body" id="demoBody"></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============ 为什么 ============ -->
+<section class="sec" id="why">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="sec-num">01 / 为什么</div>
+      <h2>不是所有公司都能重写一套系统</h2>
+      <p>给现有系统加 AI，难的地方从来不是「接个大模型」，而是这三件事。</p>
+    </div>
+
+    <div class="pains reveal">
+      <div class="pain">
+        <div class="q">问题一</div>
+        <h3>模型不认识你的接口</h3>
+        <p>通用大模型知道怎么写 SQL，但不知道你有 <code>/api/stats/sales</code>，更不知道它收 days 还是 startDate。不给说明书，它只能瞎猜。</p>
+      </div>
+      <div class="pain">
+        <div class="q">问题二</div>
+        <h3>没人敢让它直接动手</h3>
+        <p>让 AI 改生产数据、改线上页面，一次误操作就是事故。没有确认闸门和备份，「能改」反而变成风险。</p>
+      </div>
+      <div class="pain">
+        <div class="q">问题三</div>
+        <h3>答错了查不出原因</h3>
+        <p>它说「这个月卖了 6188」，你不知道数字从哪来。没有工具调用记录、没有依据、没有反馈闭环，就没法优化。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 能做什么 ============ -->
+<section class="sec" id="what">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="sec-num">02 / 能做什么</div>
+      <h2>四种能力，都落在你系统已有的东西上</h2>
+      <p>没有凭空造数据，没有绕过业务逻辑。它调的是你的接口、查的是你的库、改的是你的文件。</p>
+    </div>
+
+    <div class="caps">
+      <div class="cap reveal">
+        <span class="corner"></span>
+        <div class="cap-top"><span class="cap-tag">SCAN</span><h3>扫接口</h3></div>
+        <p>读源码把路由、参数、风险等级扫成一份清单（manifest.json）。扫不准的地方，管理端可以一条条改。</p>
+        <code>node cli/index.mjs init --root . --name "门店后台"</code>
+      </div>
+
+      <div class="cap reveal">
+        <span class="corner"></span>
+        <div class="cap-top"><span class="cap-tag">API</span><h3>调接口</h3></div>
+        <p>清单里的每个接口都会变成模型能调用的工具。接口自测会先真调一次，把真实返回结构写回说明——模型不用再猜字段名。</p>
+        <code>GET /api/stats/sales → {revenue, orders, top[]}</code>
+      </div>
+
+      <div class="cap reveal">
+        <span class="corner"></span>
+        <div class="cap-top"><span class="cap-tag">DB</span><h3>查数据库</h3></div>
+        <p>跨表统计而接口不够用时，允许写只读 SQL。语句级护栏：只放行 SELECT，行数有上限，写操作在驱动层就拦住。</p>
+        <code>SELECT name, SUM(qty) FROM orders GROUP BY name</code>
+      </div>
+
+      <div class="cap reveal">
+        <span class="corner"></span>
+        <div class="cap-top"><span class="cap-tag">FILE</span><h3>改页面</h3></div>
+        <p>纯静态站没有接口，就让助手直接改文件。读原文 → 生成逐行 diff → 你点确认才落盘，改坏了能一键回滚。</p>
+        <code>- ¥128  →  + ¥138   （只动这一行）</code>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 数据条 ============ -->
+<section style="padding: 0 0 clamp(54px,7vw,92px);">
+  <div class="wrap">
+    <div class="stats reveal">
+      <div class="stat"><b><em>0</em></b><span>第三方依赖</span></div>
+      <div class="stat"><b>2 <em>行</em></b><span>业务代码改动</span></div>
+      <div class="stat"><b>5</b><span>框架自动扫描</span></div>
+      <div class="stat"><b>6</b><span>文件编辑安全闸</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 怎么接 ============ -->
+<section class="sec" id="how">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="sec-num">03 / 怎么接</div>
+      <h2>两种接法，选择权在你这边的技术栈</h2>
+      <p>四层里只有「挂载方式」绑 Node，其余三层跟宿主语言无关。所以 PHP、Java、.NET 的老系统同样能接。</p>
+    </div>
+
+    <div class="modes">
+      <div class="mode reveal">
+        <div class="mode-label"><i>A</i> 嵌入模式 · 同进程</div>
+        <h3>两行代码，跟业务跑在一起</h3>
+        <div class="who">适用于 Node 项目：Express / Koa / 原生 http</div>
+        <p>助手作为中间件挂进现有服务，共用同一个端口和同一份数据连接，不用额外起进程。</p>
+        <pre><span class="c">// 入口文件，所有路由注册之后</span>
+<span class="k">import</span> { createPilot } <span class="k">from</span> './vendor/sidepilot/src/index.mjs';
+createPilot({ config: './.sidepilot/config.json' }).attach(server);</pre>
+      </div>
+
+      <div class="mode reveal">
+        <div class="mode-label"><i>B</i> 独立模式 · 反向代理</div>
+        <h3>业务代码零改动</h3>
+        <div class="who">适用于 PHP / Java / .NET / Python / 纯静态站</div>
+        <p>助手单独跑一个进程，业务站把 <code>/pilot</code> 转发过去。对业务系统来说，它只是多了一个路径。</p>
+        <pre><span class="c"># nginx 三段</span>
+location /pilot/ {
+    proxy_pass http://127.0.0.1:7788;
+    proxy_buffering off;   <span class="c"># SSE 必须关</span>
+}</pre>
+      </div>
+    </div>
+
+    <div class="matrix reveal">
+      <table>
+        <thead>
+          <tr><th>项目类型</th><th>接入方式</th><th>业务侧改动</th><th>建议能力域</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Node（Express / Koa / 裸 http）</td><td>嵌入，同进程</td><td>入口加 2 行</td><td>api + db + file</td></tr>
+          <tr><td>PHP（Laravel / ThinkPHP / 原生）</td><td>独立 + nginx 反代</td><td><span class="zero">0 行</span></td><td>api</td></tr>
+          <tr><td>Java（Spring Boot）</td><td>独立 + nginx / 网关</td><td><span class="zero">0 行</span></td><td>api</td></tr>
+          <tr><td>.NET（ASP.NET）</td><td>独立 + IIS ARR</td><td><span class="zero">0 行</span></td><td>api</td></tr>
+          <tr><td>纯 HTML / 静态站</td><td>独立 + nginx</td><td><span class="zero">0 行</span></td><td>file</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 安全 ============ -->
+<section class="sec" id="guard">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="sec-num">04 / 安全</div>
+      <h2>「能动手」和「敢让它动手」是两件事</h2>
+      <p>默认策略一律偏保守：能不执行就不执行，能只读就不写，必须写就一定有人点确认。</p>
+    </div>
+
+    <div class="guard-grid">
+      <ul class="gates reveal">
+        <li><b>目录白名单</b><span>文件编辑只能落在配置指定的目录内，白名单外的路径直接拒绝，不给"随手改一下"的机会。</span></li>
+        <li><b>改前备份</b><span>每次落盘前把原文完整存进 .sidepilot/backups，回滚时不用靠 diff 反推。</span></li>
+        <li><b>语法校验</b><span>改 HTML 先做标签平衡检查，改完不合法就不写盘，避免把页面改成一堆死标签。</span></li>
+        <li><b>逐行差异确认</b><span>写之前把 diff 摆在你面前，只动那几行。不点确认，一个字都不会变。</span></li>
+        <li><b>原子写入</b><span>先写临时文件再替换，中途断电也不会留下半截文件。</span></li>
+        <li><b>一键回滚</b><span>改错了在文档站点「修改历史」里回滚，用的是备份的原文，不是靠模型再改一遍。</span></li>
+      </ul>
+
+      <div class="audit-card reveal">
+        <h3>操作审计 · 谁在什么时候动了什么</h3>
+        <div class="audit-row">
+          <span class="t">14:02</span>
+          <span class="what">调用工具 <em>sales_stats</em>（days: 30）</span>
+          <span class="who-badge">张三</span>
+        </div>
+        <div class="audit-row">
+          <span class="t">14:03</span>
+          <span class="what">修改文件 <em>www/index.html</em>，第 116 行 · ¥128 → ¥138</span>
+          <span class="who-badge">张三</span>
+        </div>
+        <div class="audit-row">
+          <span class="t">14:05</span>
+          <span class="what">写操作被拒绝 · <em>product_create</em></span>
+          <span class="who-badge">李四</span>
+        </div>
+        <div class="audit-row">
+          <span class="t">14:09</span>
+          <span class="what">修改配置 <em>llm.model</em></span>
+          <span class="who-badge">admin</span>
+        </div>
+        <div class="audit-note">
+          审计只记动作和对象，不记密钥内容。会话、工具流水、文件改动、配置变更各留一条，
+          配合 <b>x-pilot-user</b> 请求头做人员归属——出事能查到人，这是能不能进企业的分界线。
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 入口 ============ -->
+<section class="sec" id="entry">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <div class="sec-num">05 / 三个入口</div>
+      <h2>装完就有三个页面，各有各的人用</h2>
+      <p>终端用户聊天，运维查接口，管理员改配置。不用再另外搭一套后台。</p>
+    </div>
+
+    <div class="entries">
+      <a class="entry reveal" href="http://localhost:8080/pilot" target="_blank" rel="noopener">
+        <span class="go">↗</span>
+        <div class="path">/pilot</div>
+        <h3>助手</h3>
+        <p>给业务人员用。问数据、加记录、改文案。刷新接着上次聊，历史能翻能切。</p>
+      </a>
+      <a class="entry reveal" href="http://localhost:8080/pilot/docs" target="_blank" rel="noopener">
+        <span class="go">↗</span>
+        <div class="path">/pilot/docs</div>
+        <h3>接口文档</h3>
+        <p>按分组列出接口、参数、风险等级，带搜索和修改历史，改错了在这里回滚。</p>
+      </a>
+      <a class="entry reveal" href="http://localhost:8080/pilot/admin" target="_blank" rel="noopener">
+        <span class="go">↗</span>
+        <div class="path">/pilot/admin</div>
+        <h3>管理端</h3>
+        <p>概览统计、对话记录、接口增删启停、模型与提示词、回答反馈、操作审计。改完立即生效，不用重启。</p>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 页脚 ============ -->
+<footer>
+  <div class="wrap">
+    <div class="foot-row">
+      <div class="foot-brand"><i></i>SidePilot</div>
+      <p class="foot-note">
+        <b>零第三方依赖</b>，Node 内置模块全包（http / sqlite / fetch）。<br>
+        管理端默认没有登录验证，只建议内网或本机使用；要放公网，请在前面加 Basic Auth 或 IP 白名单。
+      </p>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ============================================================
+   Hero 演示卡：按真实交互顺序逐步播放，循环。
+   不用任何框架，setTimeout 串起来，失败也不会卡住页面。
+   ============================================================ */
+(function () {
+  var box = document.getElementById('demoBody');
+  if (!box) return;
+
+  // 一段完整的问答：提问 → 两次工具调用 → 表格 → 结论
+  var seq = [
+    {
+      html: '<div class="d-user">这个月卖得最好的商品是哪些？</div>',
+      wait: 700
+    },
+    {
+      html: '<div class="d-tool"><span class="pulse"></span><span class="nm">sales_stats</span><span class="sm">days: 30</span><span class="ms">128ms</span></div>',
+      wait: 620
+    },
+    {
+      html: '<div class="d-tool done"><span class="pulse"></span><span class="nm">sales_stats</span><span class="sm">返回 6 条</span><span class="ms">128ms</span></div>',
+      wait: 430
+    },
+    {
+      html: '<div class="d-tool"><span class="pulse"></span><span class="nm">db_query</span><span class="sm">SELECT ... GROUP BY</span><span class="ms">41ms</span></div>',
+      wait: 620
+    },
+    {
+      html: '<div class="d-table">' +
+              '<div class="tr th"><span class="td">商品</span><span class="td num">销量</span><span class="td num">销售额</span></div>' +
+              '<div class="tr"><span class="td">手冲咖啡壶</span><span class="td num">4</span><span class="td num">1,312</span></div>' +
+              '<div class="tr"><span class="td">云南小粒</span><span class="td num">6</span><span class="td num">534</span></div>' +
+              '<div class="tr"><span class="td">耶加雪菲</span><span class="td num">4</span><span class="td num">512</span></div>' +
+            '</div>',
+      wait: 900
+    },
+    {
+      html: '<div class="d-answer">按销售额看，<b>手冲咖啡壶</b>最高（¥1,312）；按销量看，<b>云南小粒咖啡豆</b>最多（6 件）。</div>' +
+            '<div class="d-actions"><i>依据：sales_stats</i><i>有用</i><i>没用</i></div>',
+      wait: 4200
+    }
+  ];
+
+  var idx = 0;
+  var timer = null;      // 当前定时器，切后台时清掉，回来重排
+  var started = false;
+
+  function step() {
+    timer = null;
+
+    // 注意：这里不用 document.hidden 做判断。
+    // 某些内嵌/后台态浏览器里 hidden 会一直是 true，一判断就永远不推进，
+    // 卡片会永远空白。改用可见性事件驱动，事件不触发就照常播。
+    if (idx >= seq.length) {
+      // 播完清空，短暂停顿再循环
+      box.innerHTML = '';
+      idx = 0;
+      timer = setTimeout(step, 380);
+      return;
+    }
+
+    var item = seq[idx];
+    var el = document.createElement('div');
+    el.className = 'pop';
+    el.innerHTML = item.html;
+    box.appendChild(el);
+
+    box.scrollTop = box.scrollHeight;
+
+    idx++;
+    timer = setTimeout(step, item.wait);
+  }
+
+  function start() {
+    if (started) return;
+    started = true;
+    timer = setTimeout(step, 500);
+  }
+
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          start();
+          io.disconnect();
+        }
+      });
+    }, { threshold: .2 });
+    io.observe(box);
+  } else {
+    start();
+  }
+
+  // 兜底：2.5 秒后卡片还是空的，就直接开始，不管 IO 判没判定
+  setTimeout(function () {
+    if (!started) start();
+  }, 2500);
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      if (timer) { clearTimeout(timer); timer = null; }
+    } else if (started && !timer) {
+      timer = setTimeout(step, 400);
+    }
+  });
+})();
+
+/* ============================================================
+   滚动显现：进入视口加 .in，带一点错开延迟
+   ============================================================ */
+(function () {
+  var items = document.querySelectorAll('.reveal');
+  if (!items.length) return;
+
+  if (!('IntersectionObserver' in window)) {
+    // 老浏览器直接全显示，不做动画
+    Array.prototype.forEach.call(items, function (el) { el.classList.add('in'); });
+    return;
+  }
+
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      var el = e.target;
+
+      // 同一批元素按先后顺序错开 60ms，形成节奏而不是一起跳出来
+      var delay = 0;
+      var parent = el.parentNode;
+      if (parent) {
+        var sibs = parent.children;
+        for (var i = 0; i < sibs.length; i++) {
+          if (sibs[i] === el) { delay = i * 60; break; }
+        }
+      }
+
+      setTimeout(function () { el.classList.add('in'); }, delay);
+      io.unobserve(el);
+    });
+  }, { threshold: .12, rootMargin: '0px 0px -8% 0px' });
+
+  Array.prototype.forEach.call(items, function (el) { io.observe(el); });
+
+  // 兜底：某些情况下（锚点直达、快速滚动、页面被程序滚动）IO 可能不触发，
+  // 这里在加载后扫几轮，视口附近的直接显示出来，免得内容一直是隐形的。
+  var passes = 0;
+  var backup = setInterval(function () {
+    passes++;
+    Array.prototype.forEach.call(items, function (el) {
+      if (el.classList.contains('in')) return;
+      var r = el.getBoundingClientRect();
+      if (r.top < window.innerHeight * 1.25 && r.bottom > -200) {
+        el.classList.add('in');
+      }
+    });
+    if (passes >= 4) clearInterval(backup);
+  }, 1200);
+})();
+</script>
+
+</body>
+</html>

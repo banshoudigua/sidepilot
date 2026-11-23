@@ -1,0 +1,24 @@
+{
+  "spec": "sidepilot.manifest/1",
+  "project": {
+    "name": "山间咖啡官网",
+    "slug": "demo-static"
+  },
+  "generatedBy": {
+    "agent": "sidepilot init",
+    "at": "2026-11-12T20:20:00+08:00"
+  },
+  "source": {
+    "root": ".",
+    "lang": ["html"],
+    "framework": ["static"],
+    "scannedFiles": 2,
+    "routesFound": 0
+  },
+  "endpoints": [],
+  "files": [
+    { "path": "www/index.html", "label": "首页", "editable": true },
+    { "path": "www/about.html", "label": "关于我们", "editable": true }
+  ],
+  "missing": []
+}

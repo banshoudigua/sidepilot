@@ -1,0 +1,20 @@
+{
+  "name": "sidepilot",
+  "version": "0.1.0",
+  "description": "给存量系统加 AI 助手的开发框架：扫接口、出文档、挂助手、对话调接口或改页面",
+  "type": "module",
+  "main": "src/index.mjs",
+  "bin": {
+    "sidepilot": "cli/index.mjs"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "files": [
+    "src",
+    "ui",
+    "cli"
+  ],
+  "dependencies": {},
+  "license": "Apache-2.0"
+}

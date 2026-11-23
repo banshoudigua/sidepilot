@@ -1,0 +1,187 @@
+{
+  "spec": "sidepilot.manifest/1",
+  "project": {
+    "name": "山间咖啡 · 门店后台",
+    "slug": "demo-shop"
+  },
+  "generatedBy": {
+    "agent": "sidepilot init",
+    "at": "2026-11-12T20:20:00+08:00"
+  },
+  "source": {
+    "root": ".",
+    "lang": [
+      "javascript"
+    ],
+    "framework": [
+      "node-http"
+    ],
+    "scannedFiles": 1,
+    "routesFound": 4
+  },
+  "endpoints": [
+    {
+      "tool": "products_list",
+      "method": "GET",
+      "path": "/api/products",
+      "name": "商品列表",
+      "summary": "按关键词或分类查询在售商品",
+      "group": "商品",
+      "risk": "read",
+      "auth": {
+        "type": "none"
+      },
+      "params": [
+        {
+          "in": "query",
+          "name": "keyword",
+          "type": "string",
+          "required": false,
+          "desc": "商品名关键词，模糊匹配"
+        },
+        {
+          "in": "query",
+          "name": "category",
+          "type": "string",
+          "required": false,
+          "desc": "分类：咖啡豆 / 器具 / 其他"
+        }
+      ],
+      "responseHint": "实测返回：{ok:boolean, items:array<{id:number, name:string, price:number, stock:number, category:string}>}",
+      "evidence": [
+        {
+          "file": "server.mjs",
+          "line": 62,
+          "note": "GET /api/products 路由"
+        }
+      ],
+      "confidence": "high",
+      "probe": {
+        "at": 1794706902376,
+        "ok": true,
+        "status": 200,
+        "ms": 41,
+        "shape": "{ok:boolean, items:array<{id:number, name:string, price:number, stock:number, category:string}>}"
+      }
+    },
+    {
+      "tool": "product_create",
+      "method": "POST",
+      "path": "/api/products",
+      "name": "新增商品",
+      "summary": "登记一个新商品，写入商品表",
+      "group": "商品",
+      "risk": "write",
+      "auth": {
+        "type": "none"
+      },
+      "params": [
+        {
+          "in": "body",
+          "name": "name",
+          "type": "string",
+          "required": true,
+          "desc": "商品名称"
+        },
+        {
+          "in": "body",
+          "name": "price",
+          "type": "number",
+          "required": true,
+          "desc": "单价，单位元"
+        },
+        {
+          "in": "body",
+          "name": "stock",
+          "type": "integer",
+          "required": false,
+          "desc": "初始库存，默认 0"
+        },
+        {
+          "in": "body",
+          "name": "category",
+          "type": "string",
+          "required": false,
+          "desc": "分类，默认未分类"
+        }
+      ],
+      "responseHint": "返回新建商品的 id",
+      "evidence": [
+        {
+          "file": "server.mjs",
+          "line": 76,
+          "note": "POST /api/products 路由"
+        }
+      ],
+      "confidence": "high"
+    },
+    {
+      "tool": "sales_stats",
+      "method": "GET",
+      "path": "/api/stats/sales",
+      "name": "销售统计",
+      "summary": "按时间范围统计营收、订单数、热销商品与每日趋势",
+      "group": "统计",
+      "risk": "read",
+      "auth": {
+        "type": "none"
+      },
+      "params": [
+        {
+          "in": "query",
+          "name": "days",
+          "type": "integer",
+          "required": false,
+          "desc": "统计最近多少天，默认 30"
+        }
+      ],
+      "responseHint": "实测返回：{ok:boolean, range:{days:number, since:string}, orders:number, revenue:number, top:array<{name:string, qty:number, amount:number}>, trend:array<{day:string, amount:number, cnt:number}>}",
+      "evidence": [
+        {
+          "file": "server.mjs",
+          "line": 92,
+          "note": "GET /api/stats/sales 路由"
+        }
+      ],
+      "confidence": "high",
+      "probe": {
+        "at": 1794706902376,
+        "ok": true,
+        "status": 200,
+        "ms": 6,
+        "shape": "{ok:boolean, range:{days:number, since:string}, orders:number, revenue:number, top:array<{name:string, qty:number, amount:number}>, trend:array<{day:string, amount:number, cnt:number}>}"
+      }
+    },
+    {
+      "tool": "orders_list",
+      "method": "GET",
+      "path": "/api/orders",
+      "name": "最近订单",
+      "summary": "按时间倒序返回最近 20 条订单",
+      "group": "订单",
+      "risk": "read",
+      "auth": {
+        "type": "none"
+      },
+      "params": [],
+      "responseHint": "实测返回：{ok:boolean, items:array<{id:number, product:string, qty:number, amount:number, created_at:string}>}",
+      "evidence": [
+        {
+          "file": "server.mjs",
+          "line": 110,
+          "note": "GET /api/orders 路由"
+        }
+      ],
+      "confidence": "high",
+      "probe": {
+        "at": 1794706902376,
+        "ok": true,
+        "status": 200,
+        "ms": 3,
+        "shape": "{ok:boolean, items:array<{id:number, product:string, qty:number, amount:number, created_at:string}>}"
+      }
+    }
+  ],
+  "files": [],
+  "missing": []
+}

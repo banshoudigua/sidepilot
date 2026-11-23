@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>管理端 · SidePilot</title>
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+<div class="app">
+
+  <aside class="rail">
+    <div class="brand">
+      <span class="mark" aria-hidden="true"></span>
+      <div>
+        <b>SidePilot</b>
+        <span id="projectName">加载中</span>
+      </div>
+    </div>
+
+    <nav class="nav" id="nav">
+      <a href="#overview" data-view="overview" class="on">概览</a>
+      <a href="#chats" data-view="chats">对话记录<em id="cntChats"></em></a>
+      <a href="#feedback" data-view="feedback">回答反馈<em id="cntFb"></em></a>
+      <a href="#endpoints" data-view="endpoints">接口清单<em id="cntEps"></em></a>
+      <a href="#audit" data-view="audit">操作审计</a>
+      <a href="#model" data-view="model">模型与提示词</a>
+      <a href="#settings" data-view="settings">设置</a>
+    </nav>
+
+    <div class="rail-foot">
+      <a href="/pilot" target="_blank">打开助手 ↗</a>
+      <a href="/pilot/docs" target="_blank">接口文档 ↗</a>
+    </div>
+  </aside>
+
+  <main class="main" id="main">
+    <p class="loading">加载中…</p>
+  </main>
+
+</div>
+
+<!-- 通用提示条 -->
+<div class="toast" id="toast"></div>
+
+<script src="admin.js"></script>
+</body>
+</html>
